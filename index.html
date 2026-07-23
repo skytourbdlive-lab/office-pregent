@@ -1,80 +1,450 @@
-            msg.innerText = "দয়া করে নাম এবং আইডি দিন!";
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>প্রিমিয়াম স্মার্ট অফিস প্রেজেন্ট সিস্টেম</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: var(--bg-gradient); min-height: 100vh; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; }
+        
+        .container { 
+            background: var(--card-bg); 
+            backdrop-filter: blur(10px);
+            border-radius: 20px; 
+            padding: 30px; 
+            width: 100%; 
+            max-width: 550px; 
+            box-shadow: var(--shadow);
+            transform: translateY(0);
+            transition: all 0.3s ease;
+        }
+        .container:hover { transform: translateY(-3px); }
+
+        h2, h3 { text-align: center; color: #1e293b; margin-top: 0; }
+        
+        input, select { 
+            width: 100%; padding: 14px; margin: 10px 0 18px; 
+            border: 2px solid #e2e8f0; border-radius: 12px; font-size: 15px; 
+            transition: 0.3s; background: #f8fafc;
+        }
+        input:focus { border-color: var(--primary); outline: none; background: #fff; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); }
+
+        button { 
+            width: 100%; padding: 14px; background: var(--primary); color: white; 
+            border: none; border-radius: 12px; font-size: 16px; font-weight: bold; 
+            cursor: pointer; transition: 0.3s; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+        button:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        
+        .btn-secondary { background: #64748b; box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3); margin-top: 8px; }
+        .btn-danger { background: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
+        .btn-success { background: var(--success); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+
+        .hidden { display: none !important; }
+        .status { margin-top: 15px; text-align: center; font-weight: bold; font-size: 14px; }
+        
+        /* 3D Stats Card */
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 15px 0; }
+        .stat-card { background: #f1f5f9; padding: 15px; border-radius: 12px; text-align: center; border-left: 5px solid var(--primary); }
+        .stat-card h4 { margin: 0; color: #64748b; font-size: 13px; }
+        .stat-card p { margin: 5px 0 0; font-size: 20px; font-weight: bold; color: #1e293b; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; background: #fff; border-radius: 10px; overflow: hidden; }
+        th, td { border: 1px solid #f1f5f9; padding: 10px; text-align: center; }
+        th { background: var(--primary); color: white; }
+
+        .notice-box { background: #eff6ff; border-left: 4px solid var(--primary); padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; color: #1e40af; }
+        
+        /* Modal for Error Video/Image */
+        #error-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #fff; padding: 25px; border-radius: 15px; text-align: center; max-width: 400px; width: 90%; }
+        .modal-content img, .modal-content video { width: 100%; border-radius: 10px; max-height: 250px; object-fit: cover; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- ১. লগইন ও রেজিস্ট্রেশন স্ক্রিন -->
+    <div id="auth-screen">
+        <h2>🏢 অফিস প্রেজেন্ট সিস্টেম</h2>
+        <div id="register-box">
+            <h3>নতুন অ্যাকাউন্ট তৈরি</h3>
+            <input type="text" id="regName" placeholder="আপনার পূর্ণ নাম">
+            <input type="text" id="regId" placeholder="আপনার ইউনিক আইডি (যেমন: 101)">
+            <button onclick="registerUser()">অ্যাকাউন্ট রেজিস্টার করুন</button>
+            <button class="btn-secondary" onclick="toggleAuth(true)">ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন</button>
+        </div>
+
+        <div id="login-box" class="hidden">
+            <h3>ইউজার লগইন</h3>
+            <input type="text" id="loginId" placeholder="আপনার আইডি নম্বর দিন">
+            <button onclick="loginUser()">লগইন করুন</button>
+            <button class="btn-secondary" onclick="toggleAuth(false)">নতুন অ্যাকাউন্ট খুলুন</button>
+        </div>
+        
+        <button class="btn-danger" style="margin-top: 15px;" onclick="showAdminLogin()">এডমিন প্যানেল</button>
+        <p id="auth-status" class="status"></p>
+    </div>
+
+    <!-- ২. ইউজার ড্যাশবোর্ড -->
+    <div id="user-dashboard" class="hidden">
+        <h2>👤 ইউজার ড্যাশবোর্ড</h2>
+        <div class="notice-box" id="user-notice">লোডিং নোটিশ...</div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h4>নাম</h4>
+                <p id="dash-name" style="font-size: 16px;"></p>
+            </div>
+            <div class="stat-card">
+                <h4>আইডি</h4>
+                <p id="dash-id"></p>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h4>এ মাসের উপস্থিতি</h4>
+                <p id="present-count">0 দিন</p>
+            </div>
+            <div class="stat-card">
+                <h4>স্ট্যাটাস</h4>
+                <p id="attendance-state" style="color: var(--success);">প্রস্তুত</p>
+            </div>
+        </div>
+
+        <button class="btn-success" style="padding: 18px; font-size: 18px; margin-top: 10px;" onclick="submitAttendance()">✅ আজকের উপস্থিতি (Present)</button>
+        <button class="btn-secondary" onclick="logout()">লগআউট</button>
+        <p id="attendance-status" class="status"></p>
+    </div>
+
+    <!-- ৩. এডমিন লগইন স্ক্রিন -->
+    <div id="admin-login-screen" class="hidden">
+        <h2>🔐 এডমিন সিকিউরিটি</h2>
+        <input type="password" id="adminPinInput" placeholder="এডমিন পাসওয়ার্ড দিন (rabby11)">
+        <button onclick="verifyAdmin()">প্রবেশ করুন</button>
+        <button class="btn-secondary" onclick="showHome()">ফিরে যান</button>
+        <p id="admin-login-status" class="status"></p>
+    </div>
+
+    <!-- ৪. এডমিন প্যানেল -->
+    <div id="admin-dashboard" class="hidden">
+        <h2>🛠️ এডমিন কন্ট্রোল প্যানেল</h2>
+        
+        <div style="margin-bottom: 15px;">
+            <input type="text" id="noticeInput" placeholder="অফিস নোটিশ বা ঘোষণা লিখুন...">
+            <button class="btn-success" onclick="updateNotice()">নোটিশ আপডেট করুন</button>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <input type="text" id="errorMediaInput" placeholder="ফানি ভিডিও/ছবির লিংক (URL) দিন...">
+            <button class="btn-danger" onclick="updateErrorMedia()">এরর মিডিয়া সেট করুন</button>
+        </div>
+
+        <h3>সকল ইউজারের উপস্থিতি তালিকা</h3>
+        <button class="btn-secondary" onclick="exportToCSV()" style="margin-bottom: 10px;">📥 রিপোর্ট ডাউনলোড (CSV)</button>
+        
+        <div style="overflow-x:auto; max-height: 250px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>নাম</th>
+                        <th>আইডি</th>
+                        <th>সময়</th>
+                        <th>লোকেশন</th>
+                        <th>অ্যাকশন</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-attendance-logs"></tbody>
+            </table>
+        </div>
+        <button class="btn-secondary" onclick="showHome()" style="margin-top: 15px;">লগআউট / হোম</button>
+    </div>
+</div>
+
+<!-- ফানি এরর মডাল (ওয়াইফাই বা অন্য এরর হলে শো করবে) -->
+<div id="error-modal" class="hidden">
+    <div class="modal-content">
+        <h3 style="color: var(--danger);">⚠️ হাজিরা ব্যর্থ!</h3>
+        <div id="error-media-container">
+            <!-- ফানি ছবি বা ভিডিও এখানে রেন্ডার হবে -->
+            <img src="https://media.giphy.com/media/3o7TKSjRrfIPjeiOkM/giphy.gif" alt="Funny Error">
+        </div>
+        <p id="error-modal-msg" style="margin: 15px 0; font-weight: bold;"></p>
+        <button onclick="closeErrorModal()">ঠিক আছে</button>
+    </div>
+</div>
+
+<script>
+    // 🔥 আপনার ফায়ারবেস কনফিগারেশন এখানে বসাবেন
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_AUTH_DOMAIN",
+        databaseURL: "YOUR_DATABASE_URL",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_STORAGE_BUCKET",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // অফিস ওয়াইফাই আইপি (ভবিষ্যতে সেট করার জন্য ভেরিয়েবল)
+    const OFFICE_IP = ""; 
+
+    window.onload = function() {
+        const savedUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (savedUser) {
+            openUserDashboard(savedUser.name, savedUser.id);
+        }
+        loadNotice();
+    };
+
+    function toggleAuth(showLogin) {
+        document.getElementById('register-box').classList.toggle('hidden', showLogin);
+        document.getElementById('login-box').classList.toggle('hidden', !showLogin);
+    }
+
+    function showHome() {
+        document.getElementById('auth-screen').classList.remove('hidden');
+        document.getElementById('user-dashboard').classList.add('hidden');
+        document.getElementById('admin-login-screen').classList.add('hidden');
+        document.getElementById('admin-dashboard').classList.add('hidden');
+    }
+
+    function showAdminLogin() {
+        document.getElementById('auth-screen').classList.add('hidden');
+        document.getElementById('admin-login-screen').classList.remove('hidden');
+    }
+
+    // ইউজার রেজিস্ট্রেশন
+    function registerUser() {
+        const name = document.getElementById('regName').value.trim();
+        const id = document.getElementById('regId').value.trim();
+        const status = document.getElementById('auth-status');
+
+        if(!name || !id) {
+            status.style.color = "var(--danger)";
+            status.innerText = "সবগুলো ঘর পূরণ করুন!";
             return;
         }
 
-        msg.style.color = "blue";
-        msg.innerText = "লোকেশন ট্র্যাক করা হচ্ছে...";
+        db.ref('users/' + id).set({ name: name, id: id }, (error) => {
+            if(!error) {
+                localStorage.setItem('currentUser', JSON.stringify({name: name, id: id}));
+                openUserDashboard(name, id);
+            } else {
+                status.style.color = "var(--danger)";
+                status.innerText = "রেজিস্ট্রেশনে সমস্যা হয়েছে!";
+            }
+        });
+    }
 
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(position) {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                const time = new Date().toLocaleString();
+    // ইউজার লগইন
+    function loginUser() {
+        const id = document.getElementById('loginId').value.trim();
+        const status = document.getElementById('auth-status');
 
-                const attendanceData = {
-                    name: name,
-                    phone: phone,
-                    time: time,
-                    location: `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`
-                };
+        if(!id) {
+            status.style.color = "var(--danger)";
+            status.innerText = "আইডি নম্বর দিন!";
+            return;
+        }
 
-                // ডাটাবেজে সেভ করা হচ্ছে
-                db.ref('attendance/').push(attendanceData, (error) => {
-                    if (error) {
-                        msg.style.color = "red";
-                        msg.innerText = "প্রেজেন্ট জমা করতে সমস্যা হয়েছে!";
-                    } else {
-                        msg.style.color = "green";
-                        msg.innerText = "সফলভাবে প্রেজেন্ট দেওয়া হয়েছে!";
-                        document.getElementById('userName').value = '';
-                        document.getElementById('userPhone').value = '';
-                    }
-                });
+        db.ref('users/' + id).once('value', (snapshot) => {
+            if(snapshot.exists()) {
+                const userData = snapshot.val();
+                localStorage.setItem('currentUser', JSON.stringify(userData));
+                openUserDashboard(userData.name, userData.id);
+            } else {
+                status.style.color = "var(--danger)";
+                status.innerText = "এই আইডি পাওয়া যায়নি!";
+            }
+        });
+    }
 
-            }, function(error) {
-                msg.style.color = "red";
-                switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        msg.innerText = "লোকেশন পারমিশন দেওয়া হয়নি! দয়া করে অন করুন।";
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        msg.innerText = "লোকেশন তথ্য পাওয়া যাচ্ছে না।";
-                        break;
-                    case error.TIMEOUT:
-                        msg.innerText = "লোকেশন পেতে অনেক সময় লাগছে।";
-                        break;
-                    default:
-                        msg.innerText = "অজানা ত্রুটি ঘটেছে।";
-                }
-            }, {
-                enableHighAccuracy: true,
-                timeout: 15000,
-                maximumAge: 0
-            });
+    function openUserDashboard(name, id) {
+        document.getElementById('auth-screen').classList.add('hidden');
+        document.getElementById('admin-login-screen').classList.add('hidden');
+        document.getElementById('admin-dashboard').classList.add('hidden');
+        document.getElementById('user-dashboard').classList.remove('hidden');
+        document.getElementById('dash-name').innerText = name;
+        document.getElementById('dash-id').innerText = id;
+        loadUserStats(id);
+    }
+
+    function logout() {
+        localStorage.removeItem('currentUser');
+        showHome();
+    }
+
+    // হাজিরা প্রদান ও লোকেশন ট্র্যাকিং
+    function submitAttendance() {
+        const status = document.getElementById('attendance-status');
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        const todayDate = new Date().toISOString().split('T')[0];
+
+        status.style.color = "var(--primary)";
+        status.innerText = "লোকেশন যাচাই করা হচ্ছে...";
+
+        // চেক করা ইউজার আজ অলরেডি প্রেজেন্ট দিয়েছে কি না
+        db.ref('attendance/' + user.id + '_' + todayDate).once('value', (snapshot) => {
+            if(snapshot.exists()) {
+                status.style.color = "var(--danger)";
+                status.innerText = "আপনি আজকের হাজিরা ইতিমধ্যে দিয়েছেন!";
+                return;
+            }
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    const lat = pos.coords.latitude.toFixed(5);
+                    const lon = pos.coords.longitude.toFixed(5);
+                    const time = new Date().toLocaleString();
+
+                    const attendanceData = {
+                        name: user.name,
+                        id: user.id,
+                        date: todayDate,
+                        time: time,
+                        location: `Lat: ${lat}, Lon: ${lon}`
+                    };
+
+                    db.ref('attendance/' + user.id + '_' + todayDate).set(attendanceData, (error) => {
+                        if(!error) {
+                            status.style.color = "var(--success)";
+                            status.innerText = "উপস্থিতি সফলভাবে সংরক্ষিত হয়েছে!";
+                            loadUserStats(user.id);
+                        }
+                    });
+                }, (err) => {
+                    showCustomError("লোকেশন পারমিশন পাওয়া যায়নি! দয়া করে জিপিএস অন করুন।");
+                }, { enableHighAccuracy: true, timeout: 10000 });
+            } else {
+                showCustomError("আপনার ডিভাইস লোকেশন সাপোর্ট করে না।");
+            }
+        });
+    }
+
+    // ফানি এরর মডাল প্রদর্শন
+    function showCustomError(msg) {
+        document.getElementById('error-modal-msg').innerText = msg;
+        document.getElementById('error-modal').classList.remove('hidden');
+        document.getElementById('attendance-status').innerText = "";
+    }
+
+    function closeErrorModal() {
+        document.getElementById('error-modal').classList.add('hidden');
+    }
+
+    // ইউজারের স্ট্যাটাস লোড
+    function loadUserStats(id) {
+        db.ref('attendance/').orderByChild('id').equalTo(id).once('value', (snapshot) => {
+            let count = 0;
+            if(snapshot.exists()) {
+                count = Object.keys(snapshot.val()).length;
+            }
+            document.getElementById('present-count').innerText = count + " দিন";
+        });
+    }
+
+    // এডমিন ভেরিফিকেশন (Password: rabby11)
+    function verifyAdmin() {
+        const pin = document.getElementById('adminPinInput').value;
+        const status = document.getElementById('admin-login-status');
+        
+        if(pin === "rabby11") {
+            document.getElementById('admin-login-screen').classList.add('hidden');
+            document.getElementById('admin-dashboard').classList.remove('hidden');
+            loadAdminData();
         } else {
-            msg.style.color = "red";
-            msg.innerText = "আপনার ব্রাউজার লোকেশন সাপোর্ট করে না।";
+            status.style.color = "var(--danger)";
+            status.innerText = "ভুল পাসওয়ার্ড! সঠিক পাসওয়ার্ড দিন (rabby11)";
         }
     }
 
-    function loadAttendanceData() {
-        const tableBody = document.getElementById('attendance-table-body');
+    // নোটিশ সিস্টেম
+    function updateNotice() {
+        const noticeText = document.getElementById('noticeInput').value;
+        db.ref('settings/notice').set(noticeText, () => {
+            alert("নোটিশ সফলভাবে আপডেট হয়েছে!");
+        });
+    }
+
+    function loadNotice() {
+        db.ref('settings/notice').on('value', (snapshot) => {
+            const notice = snapshot.val() || "কোনো নতুন নোটিশ নেই।";
+            document.getElementById('user-notice').innerText = "📢 নোটিশ: " + notice;
+        });
+    }
+
+    // এরর মিডিয়া আপডেট
+    function updateErrorMedia() {
+        const url = document.getElementById('errorMediaInput').value;
+        db.ref('settings/errorMedia').set(url, () => {
+            alert("এরর মিডিয়া লিংক আপডেট হয়েছে!");
+        });
+    }
+
+    // এডমিন প্যানেল ডাটা লোড ও ম্যানেজমেন্ট
+    function loadAdminData() {
+        const table = document.getElementById('admin-attendance-logs');
         db.ref('attendance/').on('value', (snapshot) => {
-            tableBody.innerHTML = '';
+            table.innerHTML = '';
             const data = snapshot.val();
-            if (data) {
-                Object.values(data).reverse().forEach(item => {
-                    const row = `<tr>
+            if(data) {
+                Object.entries(data).forEach(([key, item]) => {
+                    table.innerHTML += `<tr>
                         <td>${item.name}</td>
-                        <td>${item.phone}</td>
+                        <td>${item.id}</td>
                         <td>${item.time}</td>
                         <td>${item.location}</td>
+                        <td><button class="btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="deleteAttendance('${key}')">রিমুভ</button></td>
                     </tr>`;
-                    tableBody.innerHTML += row;
                 });
             } else {
-                tableBody.innerHTML = `<tr><td colspan="4">এখনো কেউ প্রেজেন্ট দেয়নি।</td></tr>`;
+                table.innerHTML = `<tr><td colspan="5">কোনো উপস্থিতি পাওয়া যায়নি।</td></tr>`;
             }
+        });
+    }
+
+    function deleteAttendance(key) {
+        if(confirm("আপনি কি এই রেকর্ডটি মুছে ফেলতে চান?")) {
+            db.ref('attendance/' + key).remove();
+        }
+    }
+
+    // রিপোর্ট ডাউনলোড (CSV)
+    function exportToCSV() {
+        db.ref('attendance/').once('value', (snapshot) => {
+            const data = snapshot.val();
+            if(!data) {
+                alert("ডাউনলোড করার মতো কোনো ডাটা নেই!");
+                return;
+            }
+            let csv = "Name,ID,Date,Time,Location\n";
+            Object.values(data).forEach(item => {
+                csv += `"${item.name}","${item.id}","${item.date}","${item.time}","${item.location}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'attendance_report.csv');
+            a.click();
         });
     }
 </script>
